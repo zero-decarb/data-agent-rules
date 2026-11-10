@@ -1,0 +1,11 @@
+{
+  "name": "zero-data-rules",
+  "owner": { "name": "Zero Homes" },
+  "plugins": [
+    {
+      "name": "data-rules",
+      "source": "./",
+      "description": "House rules for the data-dbt repo and the Data Wiki update steps"
+    }
+  ]
+}
