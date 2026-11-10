@@ -19,14 +19,17 @@ Each rule says why, so you can judge cases it doesn't cover.
 |---|---|---|---|---|
 | L0 | `models/l0/` (sources only) | data-engine's (`hubspot`, `podium`, ...) | Raw loads. Never edited. | dbt only |
 | L1 | `models/l1/<source>/`, `seeds/` | `bizops_l1` | One cleaned table per source object; seeds | dbt only |
-| L2 | `models/l2/` | `bizops_l2` | One row per real thing | Tools, after L3, when the question is about the thing itself |
+| L2 | `models/l2/` | `bizops_l2` | One row per real thing; may be built in steps, one L2 model reading another | Tools, after L3, when the question is about the thing itself |
 | L3 | `models/l3/` | `bizops_l3` | Rules and measures | Tools, first choice |
 
 Stage builds add `_stage` (and `_pr<n>` for a PR) to each schema name.
 
 ## Rules
 
-1. **Pick the layer by what the model is.** Renaming, typing or deduping one source table is L1. Combining sources into one row per real thing is L2. Applying a business rule, measuring or aggregating is L3. A model that reads only L0 is L1, whatever it's called. Folder = schema (`models/l1`, `l2`, `l3`), set by `+schema` in `dbt_project.yml`. *Why: a table's layer tells a reader what it can be trusted for. Names come from the file name (or `alias`), so check a new name isn't taken in another layer.*
+1. **Pick the layer by what the model is.** Renaming, typing or deduping one source table is L1. Combining sources into one row per real thing is L2. Applying a business rule, measuring or aggregating is L3. A model that reads only L0 is L1, whatever it's called. A model's layer comes from what it does, not from what it reads. Folder = schema (`models/l1`, `l2`, `l3`), set by `+schema` in `dbt_project.yml`.
+   - **Steps inside a layer are normal.** An L2 or L3 model can read other models of its own layer (several L2 steps, joined or transformed one after another, before the final L2 table). Each step is still one row per real thing (L2) or one rule or measure (L3). Never read upward: L1 doesn't read L2 or L3, L2 doesn't read L3, and no cycles.
+   - **Say which step tools read.** A step only one model uses is `materialized: ephemeral`; a step that is a table says in its description that it is an intermediate and names the final model to read instead. The last step of a chain is the one tools read.
+   *Why: a table's layer tells a reader what it can be trusted for. Names come from the file name (or `alias`), so check a new name isn't taken in another layer.*
 2. **One definition per business rule, and it lives in dbt.** A rule (qualified, program vs Direct, installed, business hours, SLA windows, week and quarter boundaries) is an L3 or L2 model that every tool reads. A step only one model uses can be `materialized: ephemeral` (no table). *Why: a rule retyped in a tool drifts from the original, and then two numbers for the same thing both look right.*
 3. **Lists, targets and thresholds are rows, not code.**
    - Small, slow-changing lists you want reviewed in git are seeds: CSV in `seeds/`, entry in `seeds/seeds.yml` with `column_types` and tests. Where a seed is a rule, carry `decided_by`, `decided_on` and `source` columns.
@@ -38,7 +41,7 @@ Stage builds add `_stage` (and `_pr<n>` for a PR) to each schema name.
 4. **Fewest tables.** Before proposing a table or column, read the columns of the existing L3 and L2 tables and test the question against real data (`dbt show` or a stage build; with no warehouse access, say which checks you couldn't run). Order of preference:
    - **The query alone**, for a derivation: a null in a milestone, a subtraction of two dates, a stage on the deals table. Don't add a column only because one tool re-derives something once.
    - **A column on an existing table.** Passing an L2 column through to the L3 table of the same row grain is normal: L3 is what tools read first, so they shouldn't have to join back to L2 for a fact about the same thing. Test that the copy equals its source.
-   - **A new table**, only for a new grain or a new source, never one table per tool. A plan that adds tables lists each with a "why not an existing table" line, naming the tables checked. This rule wins over the README's "extracts shaped for one dive" wording.
+   - **A new table**, only for a new grain or a new source, never one table per tool. A step in a chain counts: if it has one reader, make it ephemeral. A plan that adds tables lists each with a "why not an existing table" line, naming the tables checked. This rule wins over the README's "extracts shaped for one dive" wording.
    *Why: every table is something to keep correct, document and explain.*
 5. **Don't build around missing architecture, and don't touch what isn't ours.**
    - Never write to `data_warehouse` directly: dbt builds it.
