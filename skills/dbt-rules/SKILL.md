@@ -1,6 +1,6 @@
 ---
 name: dbt-rules
-description: House rules for the data-dbt repo (zero-decarb/data-dbt, the MotherDuck warehouse layers bizops_l1 / l2 / l3). Use whenever working in a data-dbt checkout, before adding or changing a model, seed, column, test or YAML description, before retiring a model, before writing a PR description for a dbt change, and before writing SQL that a dive, dashboard, board or Flight will run against the warehouse (a business rule it needs becomes a dbt model here, not code in the tool).
+description: House rules for the data-dbt repo (zero-decarb/data-dbt, the MotherDuck warehouse layers bizops_l1 / l2 / l3). Use whenever working in a data-dbt checkout, before adding or changing a model, seed, column, test or YAML description, before retiring a model, before writing a PR description for a dbt change, before computing, adding or changing a business metric (MQL, QP, signed, installed, close rate, Direct vs Programs), and before writing SQL that a dive, dashboard, board or Flight will run against the warehouse (a business rule it needs becomes a dbt model here, not code in the tool).
 ---
 
 # dbt rules
@@ -53,6 +53,7 @@ Stage builds add `_stage` (and `_pr<n>` for a PR) to each schema name.
 7. **Descriptions in the house style.** The `.yml` sits beside the model (L1: one per source folder; L3 may share a file for related models). Describe with a `>` folded block, plain English, no filler. First sentence is the grain ("One row per ..."). Then, where the text states a rule, the rule with its numbers and who decided it and when (`<who>, <date>`); and what a reader should use instead, if the table is a step toward another. Describe a column when its name isn't enough: units, time zone, what null means, which date. A rule too long for YAML goes in a `{# #}` comment at the top of the SQL. *Why: the Data Wiki's table pages are generated from these descriptions.*
 8. **Change or retire with the readers in mind.** Before renaming, retyping or dropping a column or model, find every reader: other models and `tests/` (search data-dbt), then dives, boards and Flights, which live outside data-dbt (ask the data owner who reads the table). Don't edit a tool you weren't asked to. A rename-only change must give identical results; a change to a rule gets a before/after diff with the rule named. To retire a model or seed, add its name to `retired_relations` in `dbt_project.yml`, with a comment line (what, when, who OK'd, where it moved), so `drop_retired` removes the leftover tables; a schema-qualified entry (`bizops_l2.callbacks`) drops one layer's copy only. *Why: readers outside data-dbt fail silently.*
 9. **Rule conflicts are the data owner's call.** If two tools define a rule differently, don't pick one. Ask. If a request itself goes against a rule (a new table where a column would do, a rule typed into a tool), do the part that fits and say in the PR what you left out and why; ask the data owner only if that leaves the request unmet.
+10. **A business metric uses the Data Wiki's definition.** Before computing, adding or changing a business metric (MQL, QP, signed, installed, close rate, Direct vs Programs and the like), read its Data Wiki page (`apps/data-wiki/site/content` in zero-decarb/prototypes, `metrics/` and `rules/`) and use that definition and the L3 model it names. Never write a second definition, and never take another tool's variant (a dive's, the Lookback's, a spreadsheet's). If there is no page, or the page and the dbt model disagree, stop and ask the data owner. *Why: the wiki is where the company agreed what each number means, so a metric computed any other way gives a second answer that looks right.*
 
 ## Tools that read the warehouse
 
@@ -87,4 +88,5 @@ Then:
 - [ ] Key tests, relationships, and a singular test for the rule itself (rule 6)?
 - [ ] Description with grain, rule, who decided and when (rule 7)?
 - [ ] Readers found; before/after for a changed rule; retired names in `retired_relations` (rule 8)?
+- [ ] For a business metric: did I read its Data Wiki page and use that definition and the L3 model it names, with no second definition (rule 10)?
 - [ ] After the merge: `data-wiki-update`. If the change moves a number the Weekly Lookback shows, that is updated in the same piece of work: [placeholder for who owns the Lookback update].
